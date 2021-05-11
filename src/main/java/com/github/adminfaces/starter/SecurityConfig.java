@@ -20,15 +20,33 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	
-	@Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Autowired
+	private CustomAuthenticationProvider authProvider;
+
+	@Configuration
+	@Order(1)
+	public static class ApiWebSecurityConfigurationAdapter extends WebSecurityConfigurerAdapter {
+		protected void configure(HttpSecurity http) throws Exception {
+			// rest Login
+			http.antMatcher("/admin/**").authorizeRequests().anyRequest().hasRole("ADMIN").and().httpBasic().and().csrf()
+					.disable();
+		}
+	}
+
 	@Override
 	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-	    auth.inMemoryAuthentication()
-	     
-	        .passwordEncoder(new BCryptPasswordEncoder())
-	        ;
+		auth.authenticationProvider(authProvider);
+	}
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		// form login
+		http.authorizeRequests().antMatchers("/", "/login.xhtml", "/javax.faces.resource/**").permitAll().anyRequest()
+				.fullyAuthenticated().and().formLogin().loginPage("/login.xhtml").defaultSuccessUrl("/index.xhtml")
+				.failureUrl("/login.xhtml?authfailed=true").permitAll().and().logout().logoutSuccessUrl("/login.xhtml")
+				.logoutUrl("/j_spring_security_logout").and().csrf().disable();
+
+		// allow to use ressource links like pdf
+		http.headers().frameOptions().sameOrigin();
 	}
 }
